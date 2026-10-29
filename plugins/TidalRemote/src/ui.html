@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>TIDAL Remote</title>
+<style>
+:root{--bg:#0b0b0d;--panel:#16161a;--panel2:#1f1f25;--line:#2a2a31;--text:#f2f2f4;--dim:#9a9aa5;--accent:#33ffee;--accent-ink:#00201d;--danger:#ff6b6b;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 0}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font:inherit}
+main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 16px}
+.hidden{display:none!important}
+#banner{background:var(--danger);color:#200;font-weight:600;text-align:center;padding:8px 12px;font-size:13px}
+
+/* Now playing */
+#np{display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:18px;min-height:100%}
+#cover{width:min(78vw,46vh,380px);aspect-ratio:1;border-radius:12px;background:var(--panel2) center/cover;box-shadow:0 18px 50px #000a}
+.meta{width:100%;max-width:420px;text-align:center}
+#title{font-size:21px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#artist{color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#quality{color:var(--accent);font-size:11px;letter-spacing:.06em;margin-top:6px;text-transform:uppercase;min-height:14px}
+.seek{width:100%;max-width:420px}
+.times{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;margin-top:2px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(var(--text),var(--text)) 0/var(--p,0%) 100% no-repeat,var(--line)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:4px;background:var(--text)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--text);margin-top:-6px}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:var(--text)}
+.transport{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px}
+.transport button{width:52px;height:52px;display:grid;place-items:center;border-radius:50%}
+.transport button:active{background:var(--panel2)}
+.transport svg{width:28px;height:28px;fill:currentColor}
+#btnPlay{width:72px;height:72px;background:var(--text);color:var(--bg)}
+#btnPlay:active{transform:scale(.96);background:var(--text)}
+#btnPlay svg{width:34px;height:34px}
+.toggle{color:var(--dim);position:relative}
+.toggle.on{color:var(--accent)}
+.toggle .one{position:absolute;font-size:10px;font-weight:800;top:12px;right:10px}
+.vol{display:flex;align-items:center;gap:10px;width:100%;max-width:380px;color:var(--dim)}
+.vol svg{width:20px;height:20px;fill:currentColor;flex:none}
+#source{color:var(--dim);font-size:12px}
+
+/* Lists */
+.h{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:22px 0 8px}
+.row{display:flex;align-items:center;gap:12px;padding:8px 6px;border-radius:10px;width:100%;text-align:left}
+.row:active{background:var(--panel2)}
+.row.current{background:var(--panel)}
+.row.current .t1{color:var(--accent)}
+.row.past{opacity:.45}
+.thumb{width:48px;height:48px;border-radius:6px;background:var(--panel2) center/cover;flex:none}
+.thumb.round{border-radius:50%}
+.txt{min-width:0;flex:1}
+.t1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t2{color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.e{display:inline-block;font-size:9px;font-weight:800;background:var(--dim);color:var(--bg);border-radius:3px;padding:0 3px;margin-right:5px;vertical-align:1px}
+.more{width:40px;height:40px;display:grid;place-items:center;color:var(--dim);flex:none;border-radius:50%}
+.more svg{width:20px;height:20px;fill:currentColor}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+.card{text-align:left;min-width:0}
+.card .art{aspect-ratio:1;border-radius:10px;background:var(--panel2) center/cover}
+.card.round .art{border-radius:50%}
+.card .t1{margin-top:8px;font-size:14px}
+.empty{color:var(--dim);text-align:center;padding:40px 0}
+
+/* Search */
+.searchbar{position:sticky;top:0;background:var(--bg);padding:14px 0 8px;z-index:2}
+.searchbar input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 14px;outline:none}
+.searchbar input:focus{border-color:var(--accent)}
+
+/* Detail */
+.back{display:flex;align-items:center;gap:6px;color:var(--dim);padding:14px 0 6px}
+.back svg{width:22px;height:22px;fill:currentColor}
+.hero{display:flex;gap:16px;align-items:flex-end;margin:6px 0 14px}
+.hero .art{width:132px;height:132px;border-radius:10px;background:var(--panel2) center/cover;flex:none}
+.hero.round .art{border-radius:50%}
+.hero h1{font-size:20px;margin:0 0 4px;line-height:1.2}
+.hero .sub{color:var(--dim);font-size:13px}
+.actions{display:flex;gap:10px;margin:6px 0 4px}
+.pill{background:var(--text);color:var(--bg);font-weight:700;border-radius:999px;padding:10px 20px;display:inline-flex;align-items:center;gap:6px}
+.pill.alt{background:var(--panel2);color:var(--text)}
+.pill svg{width:18px;height:18px;fill:currentColor}
+
+/* Mini player + tabs */
+#mini{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+#mini .thumb{width:40px;height:40px}
+#mini button.mp{width:44px;height:44px;display:grid;place-items:center}
+#mini svg{width:26px;height:26px;fill:currentColor}
+#miniBar{height:2px;background:var(--line);position:relative}
+#miniBar i{position:absolute;inset:0 auto 0 0;background:var(--text);width:0}
+nav{display:flex;background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 10px;color:var(--dim);font-size:11px}
+nav button.on{color:var(--text)}
+nav svg{width:24px;height:24px;fill:currentColor}
+
+/* Sheet + toast */
+#sheetBg{position:fixed;inset:0;background:#0009;z-index:10}
+#sheet{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-radius:18px 18px 0 0;padding:10px 10px calc(14px + env(safe-area-inset-bottom));z-index:11}
+#sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+#sheet .sheetHead{padding:0 8px 8px;color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sheet button.opt{display:block;width:100%;text-align:left;padding:14px 12px;border-radius:10px;font-size:16px}
+#sheet button.opt:active{background:var(--panel2)}
+#toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+#tokenGate{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:32px}
+#tokenGate input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 14px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--text);border-radius:50%;animation:s 0.8s linear infinite;margin:40px auto}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="banner" class="hidden">Connecting to TIDAL…</div>
+
+<main id="view-np">
+	<section id="np">
+		<div id="cover"></div>
+		<div class="meta">
+			<div id="title">Nothing playing</div>
+			<div id="artist">Start something from Search or Library</div>
+			<div id="quality"></div>
+		</div>
+		<div class="seek">
+			<input id="seek" type="range" min="0" max="100" step="0.5" value="0" aria-label="Seek">
+			<div class="times"><span id="tCur">0:00</span><span id="tDur">0:00</span></div>
+		</div>
+		<div class="transport">
+			<button id="btnShuffle" class="toggle" aria-label="Shuffle"><svg viewBox="0 0 24 24"><path d="M10.6 9.2 5.4 4 4 5.4l5.2 5.2 1.4-1.4zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4h-5.5zm.3 9.4-1.4 1.4 3.1 3.1-2 2.1H20v-5.5l-2 2-3.2-3.1z"/></svg></button>
+			<button id="btnPrev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+			<button id="btnPlay" aria-label="Play/Pause"><svg viewBox="0 0 24 24"><path id="playIcon" d="M8 5v14l11-7z"/></svg></button>
+			<button id="btnNext" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+			<button id="btnRepeat" class="toggle" aria-label="Repeat"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg><span class="one hidden">1</span></button>
+		</div>
+		<div class="vol">
+			<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3z"/></svg>
+			<input id="vol" type="range" min="0" max="100" step="1" value="50" aria-label="Volume">
+			<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+		</div>
+		<div id="source"></div>
+	</section>
+</main>
+
+<main id="view-queue" class="hidden"></main>
+<main id="view-search" class="hidden">
+	<div class="searchbar"><input id="q" type="search" placeholder="Artists, albums, tracks, playlists" autocomplete="off" enterkeyhint="search"></div>
+	<div id="results"></div>
+</main>
+<main id="view-library" class="hidden"></main>
+<main id="view-detail" class="hidden"></main>
+
+<div id="miniBar" class="hidden"><i></i></div>
+<div id="mini" class="hidden">
+	<div class="thumb" id="miniCover"></div>
+	<div class="txt"><div class="t1" id="miniTitle"></div><div class="t2" id="miniArtist"></div></div>
+	<button class="mp" id="miniPlay" aria-label="Play/Pause"><svg viewBox="0 0 24 24"><path id="miniIcon" d="M8 5v14l11-7z"/></svg></button>
+	<button class="mp" id="miniNext" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+</div>
+
+<nav>
+	<button data-tab="np" class="on"><svg viewBox="0 0 24 24"><path d="M12 3v10.6A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>Playing</button>
+	<button data-tab="queue"><svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zm0 5h12v2H3zm0 5h8v2H3zm14-5v7.2A3 3 0 1 0 19 21v-8h3v-2h-5z"/></svg>Queue</button>
+	<button data-tab="search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>Search</button>
+	<button data-tab="library"><svg viewBox="0 0 24 24"><path d="M4 6H2v14a2 2 0 0 0 2 2h14v-2H4V6zm16-4H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-1 9h-4v4h-2v-4H9V9h4V5h2v4h4v2z"/></svg>Library</button>
+</nav>
+
+<div id="sheetBg" class="hidden"></div>
+<div id="sheet" class="hidden"><div class="grab"></div><div class="sheetHead" id="sheetHead"></div><div id="sheetOpts"></div></div>
+<div id="toast"></div>
+
+<div id="tokenGate" class="hidden">
+	<h2 style="margin:0">Pair with TIDAL</h2>
+	<div style="color:var(--dim)">Scan the QR code in TIDAL → Luna Settings → TidalRemote, or paste the access token.</div>
+	<input id="tokenInput" placeholder="Access token" autocomplete="off">
+	<button class="pill" id="tokenSave" style="justify-content:center">Connect</button>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const ICON_PLAY = "M8 5v14l11-7z", ICON_PAUSE = "M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+const MORE_SVG = '<svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>';
+const BACK_SVG = '<svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>';
+const PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const SHUF_SVG = '<svg viewBox="0 0 24 24"><path d="M10.6 9.2 5.4 4 4 5.4l5.2 5.2 1.4-1.4zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4h-5.5zm.3 9.4-1.4 1.4 3.1 3.1-2 2.1H20v-5.5l-2 2-3.2-3.1z"/></svg>';
+
+// #region Token
+const hashToken = new URLSearchParams(location.hash.slice(1)).get("token");
+if (hashToken) { try { localStorage.setItem("tidalRemoteToken", hashToken); } catch {} history.replaceState(null, "", location.pathname); }
+let token = hashToken || (() => { try { return localStorage.getItem("tidalRemoteToken") || ""; } catch { return ""; } })();
+const setToken = (t) => { token = t; try { localStorage.setItem("tidalRemoteToken", t); } catch {} };
+// #endregion
+
+// #region Helpers
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const bg = (url) => (url ? `style="background-image:url('${esc(url)}')"` : "");
+const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); const m = Math.floor(s / 60), h = Math.floor(m / 60); return h ? `${h}:${String(m % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}` : `${m}:${String(s % 60).padStart(2, "0")}`; };
+const setRange = (el, v, max) => { el.max = max || 100; el.value = v; el.style.setProperty("--p", `${max ? (v / max) * 100 : 0}%`); };
+let toastTimer;
+const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1800); };
+const vibrate = () => navigator.vibrate?.(8);
+
+const cmd = async (name, args = {}) => {
+	const res = await fetch("/api/cmd", { method: "POST", headers: { "Content-Type": "application/json", "X-Remote-Token": token }, body: JSON.stringify({ cmd: name, args }) });
+	if (res.status === 401) { showGate(); throw new Error("Unauthorized"); }
+	const body = await res.json().catch(() => ({}));
+	if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+	return body.data;
+};
+const run = (name, args, okMsg) => cmd(name, args).then((d) => { if (okMsg) toast(okMsg); return d; }).catch((e) => { if (e.message !== "Unauthorized") toast(e.message); });
+// #endregion
+
+// #region State + SSE
+let state = null, receivedAt = 0, dragging = false, volDragging = false, es = null;
+const livePos = () => { if (!state) return 0; let p = state.position || 0; if (state.playing) p += (Date.now() - receivedAt) / 1000; const d = state.track?.duration; return d ? Math.min(p, d) : p; };
+
+const render = () => {
+	const t = state?.track;
+	$("title").textContent = t?.title || "Nothing playing";
+	$("artist").textContent = t ? `${t.artist}${t.album ? " · " + t.album : ""}` : "Start something from Search or Library";
+	$("quality").textContent = state?.quality || "";
+	const big = t?.cover?.replace("/160x160.", "/640x640.");
+	$("cover").style.backgroundImage = big ? `url('${big}')` : "";
+	const icon = state?.playing ? ICON_PAUSE : ICON_PLAY;
+	$("playIcon").setAttribute("d", icon); $("miniIcon").setAttribute("d", icon);
+	$("btnShuffle").classList.toggle("on", !!state?.shuffle);
+	$("btnRepeat").classList.toggle("on", (state?.repeat ?? 0) > 0);
+	$("btnRepeat").querySelector(".one").classList.toggle("hidden", state?.repeat !== 2);
+	if (!volDragging && state) setRange($("vol"), state.muted ? 0 : state.volume, 100);
+	$("source").textContent = state?.source ? `Playing from ${state.source}` : "";
+	$("miniCover").style.backgroundImage = t?.cover ? `url('${t.cover}')` : "";
+	$("miniTitle").textContent = t?.title || ""; $("miniArtist").textContent = t?.artist || "";
+	document.title = t ? `${t.title} · ${t.artist}` : "TIDAL Remote";
+	updateMini(); tick();
+	if (currentTab === "queue") markQueue();
+};
+const tick = () => {
+	const d = state?.track?.duration || 0, p = livePos();
+	if (!dragging) { setRange($("seek"), p, d); $("tCur").textContent = fmt(p); }
+	$("tDur").textContent = fmt(d);
+	$("miniBar").firstElementChild.style.width = d ? `${(p / d) * 100}%` : "0";
+};
+setInterval(tick, 500);
+
+const connect = () => {
+	es?.close();
+	if (!token && needsToken) return showGate();
+	es = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+	es.onmessage = (e) => {
+		$("banner").classList.add("hidden");
+		const s = JSON.parse(e.data);
+		if (!s) { $("banner").textContent = "Waiting for TIDAL…"; $("banner").classList.remove("hidden"); return; }
+		const trackChanged = s.track?.id !== state?.track?.id;
+		state = s; receivedAt = Date.now(); render();
+		if (trackChanged && currentTab === "queue") loadQueue();
+	};
+	es.onerror = async () => {
+		$("banner").textContent = "Connection lost, retrying…"; $("banner").classList.remove("hidden");
+		// EventSource hides HTTP status; probe to detect a bad token
+		const r = await fetch("/api/state", { headers: { "X-Remote-Token": token } }).catch(() => null);
+		if (r?.status === 401) { es.close(); showGate(); }
+	};
+};
+let needsToken = true;
+document.addEventListener("visibilitychange", () => { if (!document.hidden && es?.readyState === 2) connect(); });
+// #endregion
+
+// #region Token gate
+const showGate = () => { $("tokenGate").classList.remove("hidden"); $("tokenInput").value = ""; };
+window.addEventListener("hashchange", () => {
+	const t = new URLSearchParams(location.hash.slice(1)).get("token");
+	if (!t) return;
+	setToken(t); history.replaceState(null, "", location.pathname);
+	$("tokenGate").classList.add("hidden"); connect();
+});
+$("tokenSave").onclick = () => { const v = $("tokenInput").value.trim(); if (!v) return; setToken(v); $("tokenGate").classList.add("hidden"); connect(); };
+// #endregion
+
+// #region Controls
+$("btnPlay").onclick = $("miniPlay").onclick = () => { vibrate(); if (state) { state.position = livePos(); receivedAt = Date.now(); state.playing = !state.playing; render(); } run("toggle"); };
+$("btnNext").onclick = $("miniNext").onclick = () => { vibrate(); run("next"); };
+$("btnPrev").onclick = () => { vibrate(); run("previous"); };
+$("btnShuffle").onclick = () => { vibrate(); run("shuffle", { on: !state?.shuffle }); };
+$("btnRepeat").onclick = () => { vibrate(); run("repeat", { mode: ((state?.repeat ?? 0) + 1) % 3 }); };
+
+const seek = $("seek");
+seek.addEventListener("input", () => { dragging = true; setRange(seek, +seek.value, +seek.max); $("tCur").textContent = fmt(+seek.value); });
+seek.addEventListener("change", () => { const v = +seek.value; dragging = false; if (state) { state.position = v; receivedAt = Date.now(); } run("seek", { seconds: v }); });
+
+const vol = $("vol"); let volTimer;
+vol.addEventListener("input", () => { volDragging = true; setRange(vol, +vol.value, 100); clearTimeout(volTimer); volTimer = setTimeout(() => run("volume", { value: +vol.value }), 120); });
+vol.addEventListener("change", () => { clearTimeout(volTimer); run("volume", { value: +vol.value }).finally(() => setTimeout(() => (volDragging = false), 400)); });
+// #endregion
+
+// #region Tabs + views
+let currentTab = "np", detailStack = [];
+const views = ["np", "queue", "search", "library", "detail"];
+const show = (name) => { for (const v of views) $(`view-${v}`).classList.toggle("hidden", v !== name); updateMini(name); };
+const updateMini = (name = visibleView()) => { const on = name !== "np" && !!state?.track; $("mini").classList.toggle("hidden", !on); $("miniBar").classList.toggle("hidden", !on); };
+const visibleView = () => views.find((v) => !$(`view-${v}`).classList.contains("hidden"));
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+	const tab = b.dataset.tab;
+	if (tab === currentTab && detailStack.length) { detailStack = []; }
+	currentTab = tab; detailStack = [];
+	document.querySelectorAll("nav button").forEach((x) => x.classList.toggle("on", x === b));
+	show(tab);
+	if (tab === "queue") loadQueue();
+	if (tab === "library") loadLibrary();
+	if (tab === "search") setTimeout(() => $("q").focus(), 50);
+});
+$("mini").addEventListener("click", (e) => { if (e.target.closest("button")) return; document.querySelector('nav button[data-tab="np"]').click(); });
+// #endregion
+
+// #region Row renderers
+let rowData = new Map(), rowSeq = 0;
+const reg = (o) => { const k = String(++rowSeq); rowData.set(k, o); return k; };
+const trackRow = (t, onTap, extraClass = "") => {
+	const k = reg({ t, onTap });
+	return `<div class="row ${extraClass}" data-k="${k}"><div class="thumb" ${bg(t.cover)}></div><div class="txt"><div class="t1">${esc(t.title)}</div><div class="t2">${t.explicit ? '<span class="e">E</span>' : ""}${esc(t.artist)}${t.duration ? " · " + fmt(t.duration) : ""}</div></div><button class="more" data-more="${k}" aria-label="More">${MORE_SVG}</button></div>`;
+};
+const card = (o) => {
+	const k = reg({ open: o });
+	const sub = o.kind === "album" ? [o.artist, o.year].filter(Boolean).join(" · ") : o.kind === "playlist" ? (o.subtitle || (o.tracks ? `${o.tracks} tracks` : "Playlist")) : "Artist";
+	return `<button class="card ${o.kind === "artist" ? "round" : ""}" data-k="${k}"><div class="art" ${bg(o.cover)}></div><div class="t1">${esc(o.title)}</div><div class="t2">${esc(sub)}</div></button>`;
+};
+const listRow = (o) => {
+	const k = reg({ open: o });
+	const sub = o.kind === "album" ? `Album · ${o.artist}` : o.kind === "playlist" ? `Playlist${o.subtitle ? " · " + o.subtitle : ""}` : "Artist";
+	return `<div class="row" data-k="${k}"><div class="thumb ${o.kind === "artist" ? "round" : ""}" ${bg(o.cover)}></div><div class="txt"><div class="t1">${esc(o.title)}</div><div class="t2">${esc(sub)}</div></div></div>`;
+};
+document.addEventListener("click", (e) => {
+	const more = e.target.closest("[data-more]");
+	if (more) { e.stopPropagation(); const d = rowData.get(more.dataset.more); if (d?.t) openSheet(d.t); return; }
+	const el = e.target.closest("[data-k]");
+	if (!el) return;
+	const d = rowData.get(el.dataset.k);
+	if (!d) return;
+	vibrate();
+	if (d.onTap) d.onTap();
+	else if (d.open) openDetail(d.open);
+});
+// Long-press a track row for options
+let pressTimer;
+document.addEventListener("touchstart", (e) => { const el = e.target.closest(".row[data-k]"); if (!el) return; pressTimer = setTimeout(() => { const d = rowData.get(el.dataset.k); if (d?.t) { vibrate(); openSheet(d.t); } }, 500); }, { passive: true });
+["touchend", "touchmove", "touchcancel"].forEach((ev) => document.addEventListener(ev, () => clearTimeout(pressTimer), { passive: true }));
+const spinner = '<div class="spin"></div>';
+// #endregion
+
+// #region Sheet
+const closeSheet = () => { $("sheet").classList.add("hidden"); $("sheetBg").classList.add("hidden"); };
+$("sheetBg").onclick = closeSheet;
+const openSheet = (t) => {
+	$("sheetHead").textContent = `${t.title} · ${t.artist}`;
+	const opts = [
+		["Play now", () => run("playTracks", { ids: [t.id] })],
+		["Play next", () => run("addNext", { id: t.id }, "Playing next")],
+		["Add to queue", () => run("addLast", { id: t.id }, "Added to queue")],
+	];
+	if (t.albumId) opts.push(["Go to album", () => openDetail({ kind: "album", id: t.albumId, title: t.album })]);
+	$("sheetOpts").innerHTML = opts.map(([l], i) => `<button class="opt" data-opt="${i}">${esc(l)}</button>`).join("");
+	$("sheetOpts").querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => { closeSheet(); opts[+b.dataset.opt][1](); });
+	$("sheet").classList.remove("hidden"); $("sheetBg").classList.remove("hidden");
+};
+// #endregion
+
+// #region Queue
+let queueReq = 0;
+const loadQueue = async () => {
+	const el = $("view-queue"); const my = ++queueReq;
+	if (!el.innerHTML) el.innerHTML = spinner;
+	const q = await cmd("queue").catch((e) => { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+	if (!q || my !== queueReq) return;
+	if (!q.items.length) { el.innerHTML = '<div class="empty">The queue is empty</div>'; return; }
+	el.innerHTML = '<div class="h">Queue</div>' + q.items.map((t) => trackRow(t, () => run("jump", { index: t.index }), t.index < q.current ? "past" : t.index === q.current ? "current" : "").replace('class="row', `data-qi="${t.index}" class="row`)).join("");
+	el.querySelector(".current")?.scrollIntoView({ block: "center" });
+};
+const markQueue = () => { const cur = state?.queueIndex; $("view-queue").querySelectorAll("[data-qi]").forEach((r) => { const i = +r.dataset.qi; r.classList.toggle("current", i === cur); r.classList.toggle("past", i < cur); }); };
+// #endregion
+
+// #region Search
+let searchTimer, searchReq = 0;
+$("q").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(doSearch, 350); });
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") { clearTimeout(searchTimer); doSearch(); $("q").blur(); } });
+const doSearch = async () => {
+	const query = $("q").value.trim(), out = $("results"), my = ++searchReq;
+	if (!query) { out.innerHTML = ""; return; }
+	out.innerHTML = spinner;
+	const r = await cmd("search", { query }).catch((e) => { out.innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+	if (!r || my !== searchReq) return;
+	let html = "";
+	if (r.tracks.length) { const ids = r.tracks.map((t) => t.id); html += '<div class="h">Tracks</div>' + r.tracks.map((t, i) => trackRow(t, () => run("playTracks", { ids, index: i, context: { type: "search" } }))).join(""); }
+	if (r.artists.length) html += '<div class="h">Artists</div>' + r.artists.slice(0, 6).map(listRow).join("");
+	if (r.albums.length) html += '<div class="h">Albums</div><div class="grid">' + r.albums.map(card).join("") + "</div>";
+	if (r.playlists.length) html += '<div class="h">Playlists</div><div class="grid">' + r.playlists.map(card).join("") + "</div>";
+	out.innerHTML = html || '<div class="empty">No results</div>';
+};
+// #endregion
+
+// #region Library
+let libCache = null;
+const loadLibrary = async (force) => {
+	const el = $("view-library");
+	if (libCache && !force) return;
+	el.innerHTML = spinner;
+	const lib = await cmd("library").catch((e) => { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+	if (!lib) return;
+	libCache = lib;
+	let html = `<div class="h">Collection</div>` + `<div class="row" data-k="${reg({ open: { kind: "favorites", title: "Favorite tracks" } })}"><div class="thumb" style="background:linear-gradient(135deg,#33ffee,#7c5cff)"></div><div class="txt"><div class="t1">Favorite tracks</div><div class="t2">Your saved tracks</div></div></div>`;
+	if (lib.playlists.length) html += '<div class="h">Playlists</div>' + lib.playlists.map(listRow).join("");
+	if (lib.albums.length) html += '<div class="h">Albums</div><div class="grid">' + lib.albums.map(card).join("") + "</div>";
+	el.innerHTML = html;
+};
+// #endregion
+
+// #region Detail
+const openDetail = async (o) => {
+	detailStack.push(o); show("detail");
+	const el = $("view-detail"); el.scrollTop = 0;
+	const back = `<button class="back" id="backBtn">${BACK_SVG}Back</button>`;
+	el.innerHTML = back + spinner; bindBack();
+	try {
+		if (o.kind === "favorites") {
+			const r = await cmd("favorites"); const ids = r.items.map((t) => t.id);
+			el.innerHTML = back + hero({ title: "Favorite tracks", sub: `${ids.length} tracks` }) + actions() + r.items.map((t, i) => trackRow(t, () => run("playTracks", { ids, index: i, context: { type: "MY_TRACKS" } }))).join("");
+			bindActions(() => run("playTracks", { ids, context: { type: "MY_TRACKS" } }), () => shufflePlay(ids, { type: "MY_TRACKS" }));
+		} else if (o.kind === "album" || o.kind === "playlist") {
+			const d = await cmd(o.kind, { id: o.id }); const play = o.kind === "album" ? "playAlbum" : "playPlaylist";
+			const sub = o.kind === "album" ? [d.artist, d.year, `${d.items.length} tracks`].filter(Boolean).join(" · ") : [d.subtitle, `${d.items.length} tracks`].filter(Boolean).join(" · ");
+			el.innerHTML = back + hero({ title: d.title, sub, cover: d.cover }) + actions() + d.items.map((t, i) => trackRow(t, () => run(play, { id: d.id, index: i }))).join("");
+			bindActions(() => run(play, { id: d.id }), () => shufflePlay(d.items.map((t) => t.id), { type: o.kind, id: d.id }));
+		} else if (o.kind === "artist") {
+			const d = await cmd("artist", { id: o.id }); const ids = d.top.map((t) => t.id);
+			el.innerHTML = back + hero({ title: d.title, sub: "Artist", cover: d.cover, round: true }) + actions() + '<div class="h">Top tracks</div>' + d.top.map((t, i) => trackRow(t, () => run("playTracks", { ids, index: i, context: { type: "artist", id: d.id } }))).join("") + (d.albums.length ? '<div class="h">Albums</div><div class="grid">' + d.albums.map(card).join("") + "</div>" : "");
+			bindActions(() => run("playTracks", { ids, context: { type: "artist", id: d.id } }), () => shufflePlay(ids, { type: "artist", id: d.id }));
+		}
+	} catch (e) { el.innerHTML = back + `<div class="empty">${esc(e.message)}</div>`; }
+	bindBack();
+};
+const hero = ({ title, sub, cover, round }) => `<div class="hero ${round ? "round" : ""}"><div class="art" ${cover ? bg(cover) : 'style="background:linear-gradient(135deg,#33ffee,#7c5cff)"'}></div><div><h1>${esc(title)}</h1><div class="sub">${esc(sub)}</div></div></div>`;
+const actions = () => `<div class="actions"><button class="pill" id="actPlay">${PLAY_SVG}Play</button><button class="pill alt" id="actShuffle">${SHUF_SVG}Shuffle</button></div>`;
+const bindActions = (play, shuf) => { $("actPlay").onclick = () => { vibrate(); play(); }; $("actShuffle").onclick = () => { vibrate(); shuf(); }; };
+const shufflePlay = (ids, context) => { const a = ids.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } run("playTracks", { ids: a, context }); };
+const bindBack = () => { const b = $("backBtn"); if (b) b.onclick = goBack; };
+const goBack = () => { detailStack.pop(); const prev = detailStack.pop(); if (prev) openDetail(prev); else show(currentTab); };
+// #endregion
+
+// Probe once to learn if a token is required, then connect
+fetch("/api/state", { headers: { "X-Remote-Token": token } }).then((r) => {
+	if (r.status === 401) { needsToken = true; showGate(); }
+	else { needsToken = false; connect(); }
+}).catch(() => { $("banner").classList.remove("hidden"); setTimeout(() => location.reload(), 3000); });
+})();
+</script>
+</body>
+</html>

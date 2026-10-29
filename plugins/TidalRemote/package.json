@@ -1,0 +1,12 @@
+{
+	"name": "@dude/tidal-remote",
+	"description": "Control the TIDAL desktop app from your phone. Serves a web remote on your local network: playback, volume, queue, search, playlists and favorites.",
+	"author": {
+		"name": "Dude"
+	},
+	"main": "./src/index.ts",
+	"type": "module",
+	"dependencies": {
+		"qrcode-generator": "^1.4.4"
+	}
+}

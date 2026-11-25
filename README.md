@@ -16,27 +16,22 @@ Control the TIDAL desktop app from your phone. The plugin runs a small web serve
 
 ## Install
 
-### Option A: quick local install
+In TIDAL: **Luna Settings → Plugin Store → Install from URL** and enter
+
+```
+https://raw.githubusercontent.com/thetwistedchi/tidal-remote/main/dist/store.json
+```
+
+The **@dude/tidal-remote-plugins** store appears in the list. Install **TidalRemote** from there. New builds pushed to `main` show up as updates.
+
+### Building
 
 ```sh
 pnpm install
 pnpm run build
-npx http-server ./dist -p 3000 --cors
 ```
 
-In TIDAL: **Luna Settings → Plugin Store → Install from URL** and enter
-
-```
-http://localhost:3000/dude.tidal-remote.mjs
-```
-
-### Option B: host on GitHub (gets updates)
-
-Push this folder to a GitHub repo, set **Settings → Actions → General → Workflow permissions** to *Read and write*. The included workflow publishes a `latest` release. Then install from:
-
-```
-https://github.com/<you>/<repo>/releases/download/latest/store.json
-```
+Commit the updated `dist` folder so the store serves the new build.
 
 ### Development
 

@@ -52,6 +52,33 @@ const api = async <T = any>(path: string): Promise<T> => {
 	return res.json();
 };
 const userId = () => redux.store.getState().session.userId;
+
+/** Writes to the API (favorites). Returns nothing; TIDAL answers these with empty or minimal bodies. */
+const apiWrite = async (method: "POST" | "DELETE", path: string, form?: Record<string, string>) => {
+	const sep = path.includes("?") ? "&" : "?";
+	const headers: Record<string, string> = { ...(await TidalApi.getAuthHeaders()) };
+	if (form) headers["Content-Type"] = "application/x-www-form-urlencoded";
+	const res = await fetch(`https://desktop.tidal.com/v1/${path}${sep}${TidalApi.queryArgs()}`, {
+		method,
+		headers,
+		body: form ? new URLSearchParams(form).toString() : undefined,
+	});
+	if (!res.ok) throw new Error(`TIDAL API ${res.status} on ${method} ${path.split("?")[0]}`);
+};
+
+const favoriteTrackIds = () => redux.store.getState().favorites?.tracks ?? [];
+export const isFavorite = (id: string | number | undefined) => id !== undefined && favoriteTrackIds().some((t: number) => String(t) === String(id));
+
+const setFavorite = async (id: string, on: boolean) => {
+	const uid = userId();
+	if (on) await apiWrite("POST", `users/${uid}/favorites/tracks`, { trackIds: id, onArtifactNotFound: "FAIL" });
+	else await apiWrite("DELETE", `users/${uid}/favorites/tracks/${id}`);
+	// Mirror the change into the app's store so the desktop heart updates too
+	const fav = redux.store.getState().favorites;
+	const tracks = fav.tracks.filter((t: number) => String(t) !== id);
+	if (on) tracks.unshift(Number(id));
+	redux.actions["favorites/SET_FAVORITE_IDS"]({ ...fav, tracks });
+};
 const onlyTracks = (items: any[] = []) => items.filter((i) => (i.type ?? "track").toLowerCase() === "track").map((i) => i.item ?? i);
 // #endregion
 
@@ -74,6 +101,7 @@ export const snapshot = async () => {
 	return {
 		online: true,
 		playing: PlayState.playing,
+		favorite: isFavorite(trackCache.track?.id),
 		track: trackCache.track,
 		position: PlayState.currentTime || PlayState.playTime || 0,
 		ts: Date.now(),
@@ -109,6 +137,9 @@ const playList = (ids: (string | number)[], index: number, context: redux.PlayQu
 
 export const commands: Record<string, (args: any) => unknown> = {
 	state: () => snapshot(),
+
+	// Favorites
+	favorite: ({ id, on }: { id: string; on: boolean }) => setFavorite(String(id), !!on),
 
 	// Transport
 	play: () => PlayState.play(),

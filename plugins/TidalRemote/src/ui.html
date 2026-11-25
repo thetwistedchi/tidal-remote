@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0b0b0d">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
 <title>TIDAL Remote</title>
 <style>
-:root{--bg:#0b0b0d;--panel:#16161a;--panel2:#1f1f25;--line:#2a2a31;--text:#f2f2f4;--dim:#9a9aa5;--accent:#33ffee;--accent-ink:#00201d;--danger:#ff6b6b;--r:14px}
+:root{color-scheme:dark;--bg:#0b0b0d;--panel:#16161a;--panel2:#1f1f25;--line:#2a2a31;--text:#f2f2f4;--dim:#9a9aa5;--accent:#33ffee;--accent-ink:#00201d;--danger:#ff6b6b;--r:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 0}
@@ -21,13 +22,22 @@ main{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 16px}
 #banner{background:var(--danger);color:#200;font-weight:600;text-align:center;padding:8px 12px;font-size:13px}
 
 /* Now playing */
-#np{display:flex;flex-direction:column;align-items:center;gap:18px;padding-top:18px;min-height:100%}
-#cover{width:min(78vw,46vh,380px);aspect-ratio:1;border-radius:12px;background:var(--panel2) center/cover;box-shadow:0 18px 50px #000a}
-.meta{width:100%;max-width:420px;text-align:center}
-#title{font-size:21px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#artist{color:var(--dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#quality{color:var(--accent);font-size:11px;letter-spacing:.06em;margin-top:6px;text-transform:uppercase;min-height:14px}
-.seek{width:100%;max-width:420px}
+#view-np{overflow:hidden;padding-bottom:0}
+#np{display:flex;flex-direction:column;align-items:center;gap:clamp(10px,2.2vh,22px);padding:clamp(12px,2.5vh,28px) 0 clamp(12px,3vh,32px);height:100%;max-width:640px;margin:0 auto}
+.coverWrap{flex:1 1 auto;min-height:120px;width:100%;container-type:size;display:flex;align-items:center;justify-content:center}
+#cover{width:min(100cqw,100cqh);height:min(100cqw,100cqh);border-radius:14px;background:var(--panel2) center/cover;box-shadow:0 18px 50px #000a}
+.meta{width:100%;display:flex;align-items:center;gap:12px}
+.meta .txt{flex:1;min-width:0}
+#title{font-size:clamp(20px,5.6vw,28px);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#artist{color:var(--dim);font-size:clamp(15px,4.2vw,19px);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#quality{color:var(--accent);font-size:12px;letter-spacing:.06em;margin-top:6px;text-transform:uppercase;min-height:14px}
+#btnFav{width:52px;height:52px;display:grid;place-items:center;border-radius:50%;color:var(--dim);flex:none}
+#btnFav svg{width:30px;height:30px;fill:currentColor}
+#btnFav.on{color:var(--accent)}
+#btnFav:active{background:var(--panel2)}
+#btnFav.pop svg{animation:pop .3s ease}
+@keyframes pop{50%{transform:scale(1.3)}}
+.seek{width:100%;flex:none}
 .times{display:flex;justify-content:space-between;color:var(--dim);font-size:12px;font-variant-numeric:tabular-nums;margin-top:2px}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
 input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:linear-gradient(var(--text),var(--text)) 0/var(--p,0%) 100% no-repeat,var(--line)}
@@ -35,19 +45,19 @@ input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:var(
 input[type=range]::-moz-range-progress{height:4px;border-radius:4px;background:var(--text)}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--text);margin-top:-6px}
 input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:var(--text)}
-.transport{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:380px}
-.transport button{width:52px;height:52px;display:grid;place-items:center;border-radius:50%}
+.transport{display:flex;align-items:center;justify-content:space-between;width:100%;flex:none}
+.transport button{width:56px;height:56px;display:grid;place-items:center;border-radius:50%}
 .transport button:active{background:var(--panel2)}
 .transport svg{width:28px;height:28px;fill:currentColor}
-#btnPlay{width:72px;height:72px;background:var(--text);color:var(--bg)}
+#btnPlay{width:clamp(72px,20vw,88px);height:clamp(72px,20vw,88px);background:var(--text);color:var(--bg)}
 #btnPlay:active{transform:scale(.96);background:var(--text)}
 #btnPlay svg{width:34px;height:34px}
 .toggle{color:var(--dim);position:relative}
 .toggle.on{color:var(--accent)}
 .toggle .one{position:absolute;font-size:10px;font-weight:800;top:12px;right:10px}
-.vol{display:flex;align-items:center;gap:10px;width:100%;max-width:380px;color:var(--dim)}
+.vol{display:flex;align-items:center;gap:10px;width:100%;color:var(--dim);flex:none}
 .vol svg{width:20px;height:20px;fill:currentColor;flex:none}
-#source{color:var(--dim);font-size:12px}
+#source{color:var(--dim);font-size:12px;flex:none;min-height:15px;text-align:center}
 
 /* Lists */
 .h{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:22px 0 8px}
@@ -108,7 +118,7 @@ nav svg{width:24px;height:24px;fill:currentColor}
 #sheet .sheetHead{padding:0 8px 8px;color:var(--dim);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sheet button.opt{display:block;width:100%;text-align:left;padding:14px 12px;border-radius:10px;font-size:16px}
 #sheet button.opt:active{background:var(--panel2)}
-#toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 16px);transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 #tokenGate{position:fixed;inset:0;background:var(--bg);z-index:30;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:32px}
 #tokenGate input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:12px 14px}
@@ -121,11 +131,14 @@ nav svg{width:24px;height:24px;fill:currentColor}
 
 <main id="view-np">
 	<section id="np">
-		<div id="cover"></div>
+		<div class="coverWrap"><div id="cover"></div></div>
 		<div class="meta">
-			<div id="title">Nothing playing</div>
-			<div id="artist">Start something from Search or Library</div>
-			<div id="quality"></div>
+			<div class="txt">
+				<div id="title">Nothing playing</div>
+				<div id="artist">Start something from Search or Library</div>
+				<div id="quality"></div>
+			</div>
+			<button id="btnFav" class="hidden" aria-label="Add to favorites"><svg viewBox="0 0 24 24"><path id="favIcon" d=""/></svg></button>
 		</div>
 		<div class="seek">
 			<input id="seek" type="range" min="0" max="100" step="0.5" value="0" aria-label="Seek">
@@ -186,6 +199,8 @@ nav svg{width:24px;height:24px;fill:currentColor}
 "use strict";
 const $ = (id) => document.getElementById(id);
 const ICON_PLAY = "M8 5v14l11-7z", ICON_PAUSE = "M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+const HEART_FULL = "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+const HEART_EMPTY = "M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z";
 const MORE_SVG = '<svg viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>';
 const BACK_SVG = '<svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>';
 const PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
@@ -226,6 +241,10 @@ const render = () => {
 	$("title").textContent = t?.title || "Nothing playing";
 	$("artist").textContent = t ? `${t.artist}${t.album ? " · " + t.album : ""}` : "Start something from Search or Library";
 	$("quality").textContent = state?.quality || "";
+	$("btnFav").classList.toggle("hidden", !t);
+	$("btnFav").classList.toggle("on", !!state?.favorite);
+	$("btnFav").setAttribute("aria-label", state?.favorite ? "Remove from favorites" : "Add to favorites");
+	$("favIcon").setAttribute("d", state?.favorite ? HEART_FULL : HEART_EMPTY);
 	const big = t?.cover?.replace("/160x160.", "/640x640.");
 	$("cover").style.backgroundImage = big ? `url('${big}')` : "";
 	const icon = state?.playing ? ICON_PAUSE : ICON_PLAY;
@@ -285,6 +304,17 @@ $("tokenSave").onclick = () => { const v = $("tokenInput").value.trim(); if (!v)
 
 // #region Controls
 $("btnPlay").onclick = $("miniPlay").onclick = () => { vibrate(); if (state) { state.position = livePos(); receivedAt = Date.now(); state.playing = !state.playing; render(); } run("toggle"); };
+$("btnFav").onclick = () => {
+	if (!state?.track) return;
+	vibrate();
+	const on = !state.favorite;
+	state.favorite = on; render();
+	const b = $("btnFav"); b.classList.remove("pop"); void b.offsetWidth; if (on) b.classList.add("pop");
+	cmd("favorite", { id: state.track.id, on }).then(() => toast(on ? "Added to favorites" : "Removed from favorites")).catch((e) => {
+		if (state?.track) { state.favorite = !on; render(); }
+		if (e.message !== "Unauthorized") toast(e.message);
+	});
+};
 $("btnNext").onclick = $("miniNext").onclick = () => { vibrate(); run("next"); };
 $("btnPrev").onclick = () => { vibrate(); run("previous"); };
 $("btnShuffle").onclick = () => { vibrate(); run("shuffle", { on: !state?.shuffle }); };

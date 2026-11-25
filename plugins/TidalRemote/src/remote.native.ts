@@ -8,7 +8,7 @@ import os from "os";
 import uiHtml from "file://ui.html";
 
 export type RemoteCommand = { id: number; cmd: string; args: any };
-export type ServerOptions = { port: number; bindAll: boolean; token: string; requireToken: boolean };
+export type ServerOptions = { port: number; bindAll: boolean; tokens: string[]; requireToken: boolean };
 
 const COMMAND_TIMEOUT_MS = 20_000;
 const POLL_TIMEOUT_MS = 25_000;
@@ -22,7 +22,10 @@ let lastState = "null";
 
 const queue: RemoteCommand[] = [];
 const pending = new Map<number, { resolve: (v: { ok: boolean; data: unknown }) => void; timer: ReturnType<typeof setTimeout> }>();
-const sseClients = new Set<http.ServerResponse>();
+/** SSE connections and the token each one authenticated with */
+const sseClients = new Map<http.ServerResponse, string | null>();
+/** token -> epoch ms of last request */
+const lastSeen = new Map<string, number>();
 let poller: { gen: number; resolve: (cmds: RemoteCommand[] | null) => void; timer: ReturnType<typeof setTimeout> } | null = null;
 
 // #region Renderer bridge
@@ -74,7 +77,7 @@ const dispatch = (cmd: string, args: unknown) =>
 export const pushState = (state: unknown) => {
 	lastState = JSON.stringify(state);
 	const frame = `data: ${lastState}\n\n`;
-	for (const res of sseClients) res.write(frame);
+	for (const res of sseClients.keys()) res.write(frame);
 };
 // #endregion
 
@@ -85,11 +88,29 @@ const safeEqual = (a: string, b: string) => {
 	return ab.length === bb.length && timingSafeEqual(ab, bb);
 };
 
-const authorized = (req: http.IncomingMessage, url: URL) => {
-	if (!options?.requireToken) return true;
+/** Returns the matching token, null when auth is disabled, or false when unauthorized */
+const authorize = (req: http.IncomingMessage, url: URL): string | null | false => {
+	if (!options?.requireToken) return null;
 	const supplied = (req.headers["x-remote-token"] as string | undefined) ?? url.searchParams.get("token") ?? "";
-	return safeEqual(supplied, options.token);
+	const match = options.tokens.find((t) => safeEqual(supplied, t));
+	if (match === undefined) return false;
+	lastSeen.set(match, Date.now());
+	return match;
 };
+
+/** Update allowed tokens without restarting; open streams of revoked tokens are closed immediately. */
+export const setTokens = (tokens: string[]) => {
+	if (!options) return;
+	options.tokens = tokens;
+	for (const [res, token] of sseClients) {
+		if (token !== null && !tokens.includes(token)) {
+			res.end();
+			sseClients.delete(res);
+		}
+	}
+};
+
+export const getLastSeen = (): Record<string, number> => Object.fromEntries(lastSeen);
 
 const sendJson = (res: http.ServerResponse, status: number, body: unknown) => {
 	res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -134,7 +155,8 @@ const handle = async (req: http.IncomingMessage, res: http.ServerResponse) => {
 	}
 
 	if (!url.pathname.startsWith("/api/")) return sendJson(res, 404, { error: "Not found" });
-	if (!authorized(req, url)) return sendJson(res, 401, { error: "Invalid or missing token" });
+	const token = authorize(req, url);
+	if (token === false) return sendJson(res, 401, { error: "Invalid or missing token" });
 
 	if (req.method === "GET" && url.pathname === "/api/state") {
 		res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -149,7 +171,7 @@ const handle = async (req: http.IncomingMessage, res: http.ServerResponse) => {
 			"X-Accel-Buffering": "no",
 		});
 		res.write(`retry: 2000\ndata: ${lastState}\n\n`);
-		sseClients.add(res);
+		sseClients.set(res, token);
 		const ping = setInterval(() => res.write(": ping\n\n"), 15_000);
 		req.on("close", () => {
 			clearInterval(ping);
@@ -184,7 +206,7 @@ export const stop = async () => {
 	}
 	queue.length = 0;
 	for (const [id] of pending) respond(id, false, "Remote stopped");
-	for (const res of sseClients) res.end();
+	for (const res of sseClients.keys()) res.end();
 	sseClients.clear();
 	if (server) {
 		const s = server;
@@ -216,16 +238,32 @@ export const start = async (opts: ServerOptions): Promise<number> => {
 	return generation;
 };
 
-export const getAddresses = (): string[] => {
-	const out: string[] = [];
+export type LanAddress = { address: string; name: string };
+
+const VIRTUAL = /vEthernet|VirtualBox|VMware|docker|^br-|veth|WSL|Hyper-V|Loopback/i;
+const VPN = /VPN|WireGuard|^wg|^tun|^tap|TAP-|OpenVPN|Tailscale|ZeroTier|NordLynx|Mullvad|utun|^ppp|Wintun/i;
+
+// Higher is better: home routers usually hand out 192.168.x, then 172.16-31.x, then 10.x
+const rank = ({ address, name }: LanAddress) => {
+	let score = 0;
+	if (address.startsWith("192.168.")) score += 30;
+	else if (/^172\.(1[6-9]|2\d|3[01])\./.test(address)) score += 20;
+	else if (address.startsWith("10.")) score += 10;
+	if (/^(Ethernet|eth|en)/i.test(name)) score += 2;
+	if (/Wi-?Fi|WLAN|wl/i.test(name)) score += 1;
+	return score;
+};
+
+/** LAN IPv4 addresses, best guess first. VPN and virtual adapters are left out. */
+export const getAddresses = (): LanAddress[] => {
+	const out: LanAddress[] = [];
 	for (const [name, ifaces] of Object.entries(os.networkInterfaces())) {
+		if (VIRTUAL.test(name) || VPN.test(name)) continue;
 		for (const i of ifaces ?? []) {
-			if (i.family !== "IPv4" || i.internal) continue;
-			// Skip common virtual adapters
-			if (/vEthernet|VirtualBox|VMware|docker|br-|veth|WSL|Hyper-V/i.test(name)) continue;
-			out.push(i.address);
+			if (i.family !== "IPv4" || i.internal || i.address.startsWith("169.254.")) continue;
+			out.push({ address: i.address, name });
 		}
 	}
-	return out;
+	return out.sort((a, b) => rank(b) - rank(a));
 };
 // #endregion

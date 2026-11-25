@@ -2,15 +2,15 @@ import { Tracer, type LunaUnload } from "@luna/core";
 import { MediaItem, redux } from "@luna/lib";
 
 import { commands, snapshot } from "./commands";
-import { getAddresses, nextCommands, pushState, respond, start, stop } from "./remote.native";
-import { settings } from "./store";
+import { getAddresses, type LanAddress, getLastSeen, nextCommands, pushState, respond, setTokens, start, stop } from "./remote.native";
+import { deviceTokens, mergeLastSeen, settings } from "./store";
 
 export const { trace, errSignal } = Tracer("[TidalRemote]");
 export const unloads = new Set<LunaUnload>();
 export { Settings } from "./Settings";
 
 // #region Status (read by Settings)
-export const status = { running: false, error: undefined as string | undefined, addresses: [] as string[] };
+export const status = { running: false, error: undefined as string | undefined, addresses: [] as LanAddress[] };
 const statusListeners = new Set<() => void>();
 export const onStatus = (fn: () => void) => (statusListeners.add(fn), () => statusListeners.delete(fn));
 const setStatus = (patch: Partial<typeof status>) => {
@@ -54,6 +54,9 @@ redux.intercept(
 		"playQueue/ENABLE_SHUFFLE_MODE_AND_SHUFFLE_ITEMS",
 		"playQueue/DISABLE_SHUFFLE_MODE_AND_UNSHUFFLE_ITEMS",
 		"playQueue/TOGGLE_SHUFFLE",
+		"favorites/SET_FAVORITE_IDS",
+		"content/ADD_ITEMS_TO_FAVORITES_SUCCESS",
+		"content/REMOVE_ITEMS_FROM_FAVORITES_SUCCESS",
 	] as any,
 	unloads,
 	publish,
@@ -101,9 +104,9 @@ const loop = async (gen: number) => {
 export const restart = async () => {
 	currentGen = -1;
 	try {
-		const gen = await start({ port: settings.port, bindAll: settings.bindAll, token: settings.token, requireToken: settings.requireToken });
+		const gen = await start({ port: settings.port, bindAll: settings.bindAll, tokens: deviceTokens(), requireToken: settings.requireToken });
 		currentGen = gen;
-		setStatus({ running: true, error: undefined, addresses: settings.bindAll ? await getAddresses() : ["127.0.0.1"] });
+		setStatus({ running: true, error: undefined, addresses: settings.bindAll ? await getAddresses() : [{ address: "127.0.0.1", name: "This PC" }] });
 		void loop(gen);
 		publish();
 		trace.log(`Remote listening on port ${settings.port}`);
@@ -113,6 +116,13 @@ export const restart = async () => {
 		trace.err.withContext("start")(err);
 	}
 };
+
+export const refreshLastSeen = async () => mergeLastSeen(await getLastSeen());
+const seenTimer = setInterval(() => void refreshLastSeen().catch(() => {}), 60_000);
+unloads.add(() => clearInterval(seenTimer));
+
+/** Apply device list changes live (revocation takes effect immediately) */
+export const syncTokens = () => setTokens(deviceTokens());
 
 unloads.add(() => {
 	currentGen = -1;
